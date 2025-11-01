@@ -1,0 +1,8 @@
+{
+  "zigwin32-25.0.28-preview-AAAAAICM5AMResOGQnQ85mfe60TTOQeMtt7GRATUOKoP": {
+    "name": "zigwin32",
+    "url": "git+https://github.com/marlersoft/zigwin32#5587b16fa040573846a6bf531301f6206d31a6bf",
+    "hash": "sha256-GIH6aO8yEWKKvIr4syG6aYViXi2whIg4feWox7f9ZSM=",
+    "rev": "5587b16fa040573846a6bf531301f6206d31a6bf"
+  }
+}

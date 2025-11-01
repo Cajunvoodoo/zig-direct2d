@@ -1,0 +1,17 @@
+.{
+    .name = .zig_direct2d,
+    .version = "0.0.0",
+    .fingerprint = 0x80920c3899c108db,
+    .minimum_zig_version = "0.15.0",
+    .dependencies = .{
+        .zigwin32 = .{
+            .url = "git+https://github.com/marlersoft/zigwin32#5587b16fa040573846a6bf531301f6206d31a6bf",
+            .hash = "zigwin32-25.0.28-preview-AAAAAICM5AMResOGQnQ85mfe60TTOQeMtt7GRATUOKoP",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
