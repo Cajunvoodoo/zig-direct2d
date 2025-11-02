@@ -15,8 +15,8 @@ pub const Pos = struct {
 
 /// Like `Pos`, but defines a width and height pair.
 pub const Bounded = struct {
-    width: u16,
-    height: u16,
+    width: u32,
+    height: u32,
 };
 
 /// `Area` are an 8-byte coordinate pair defining a rectangular bounding box.

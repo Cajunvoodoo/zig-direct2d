@@ -55,7 +55,10 @@ pub const Window = switch(native_os) {
                     self.InitResources() catch return -1; // Fail CreateWindowEx.
                     break :blk msg.Message.Init;
                 },
-                win32.WM_DESTROY => msg.Message.Deinit,
+                win32.WM_DESTROY => blk: {
+                    defer win32.PostQuitMessage(0);
+                    break :blk msg.Message.Deinit;
+                },
                 win32.WM_PAINT   => msg.Message.Repaint,
                 win32.WM_SIZE  => blk: {
                     // This message happens after the resizing action is complete (see WM_SIZING for constant updates).
@@ -122,7 +125,19 @@ pub const Window = switch(native_os) {
 
         // Library code ///////////////////////////////////////////////////////
 
-        pub fn Create(self: *Window, windowName: [*:0]const u8, options: Options) Error!void {
+        pub fn resize(self: *Window, desired_size: area.Bounded) void {
+          if (self.pRenderTarget) |renderTarget| {
+              var rc: win32.RECT = undefined;
+              _ = win32.GetClientRect(self.hwnd.?, &rc);
+
+              const size = win32.D2D_SIZE_U{ .width = desired_size.width, .height = desired_size.height };
+
+              _ = renderTarget.Resize(&size);
+              _ = win32.InvalidateRect(self.hwnd.?, null, win32.FALSE);
+          }
+        }
+
+        pub fn create(self: *Window, windowName: [*:0]const u8, options: Options) Error!void {
             // FIXME: this is awful.
             var windowNameUtf16: [256:0]u16 = undefined;
             std.debug.assert(std.mem.span(windowName).len <= 256);

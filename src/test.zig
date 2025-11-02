@@ -26,6 +26,7 @@ pub fn main() !void {
     var window = windowMod.init(_wm);
 
     var wRect: WRect = .{
+        .style = .{.unfilled = 10},
         .area = .{
             .tl = .{.x = 100, .y = 100},
             .br = .{.x = 300, .y = 300},
@@ -34,9 +35,8 @@ pub fn main() !void {
 
     _ = window.widgetManager.addWNode(wRect.wNode());
 
-    try window.Create("Test Window Name", .{.x = 100, .y = 100, .width = 500, .height = 300});
+    try window.create("Test Window Name", .{.x = 100, .y = 100, .width = 500, .height = 300});
 
-    // TODO: add win32 traditional main loop
     var msg: win32.MSG = undefined;
     while (0 != win32.GetMessageW(&msg, null, 0, 0)) {
         _ = win32.TranslateMessage(&msg);

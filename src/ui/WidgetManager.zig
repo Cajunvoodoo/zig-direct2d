@@ -1,5 +1,7 @@
+const builtin = @import("builtin");
 const std = @import("std");
 const Io = std.Io;
+const Instant = std.time.Instant;
 
 const msg = @import("message.zig");
 const Window = @import("window.zig").Window;
@@ -181,18 +183,43 @@ pub fn removeWNode(self: *WidgetManager, indx: WidgetIndex) void {
 
 /// Immediately realize an event onto the global nodes/widgets.
 pub fn dispatchEvt(self: *WidgetManager, evt: Event) WNode.WidgetError!void {
+    std.log.debug("{s} START DISPATCH {s}", .{"=+" ** 4, "=+" ** 4});
+    defer std.log.debug("{s} END DISPATCH {s}\n", .{"=+" ** 4, "=+" ** 4});
+    var _t: Instant = undefined;
+    startFrameTime(&_t);
+    defer endFrameTime(_t);
+
     std.log.debug("Dispatch: Event received from node#{d}: {}", .{@intFromEnum(evt.source), evt.message});
     const window: *Window = @fieldParentPtr("widgetManager", self);
     // std.log.debug("Dispatch: Found parent window {}", .{window});
     std.debug.assert(self.global_nodes.ptr == window.widgetManager.global_nodes.ptr);
 
+    // TODO REMOVE THIS CODE
+    if (evt.message == .Resize) {
+        window.resize(evt.message.Resize);
+    }
+
     // REVIEW: this seems like garbage.
     for (self.global_nodes, 0..) |*mb_node, idx| {
+        _ = idx;
         if (mb_node.node) |*node| {
-            std.log.debug("dispatching to node#{d}", .{idx});
+            // std.log.debug("dispatching to node#{d}", .{idx});
             try node.handleMsg(evt, window);
         }
     }
+}
 
-    // TODO handle clicks and other position-specific actions.
+
+inline fn startFrameTime(time: *Instant) void {
+    if (builtin.mode == .Debug or true) {
+        time.* = Instant.now() catch unreachable;
+    }
+}
+
+inline fn endFrameTime(startTime: Instant) void {
+    if (builtin.mode == .Debug or true) {
+        const endTime = Instant.now() catch unreachable;
+        const dur = endTime.since(startTime);
+        std.log.debug("FRAMETIME: Event dispatch took {D}", .{dur});
+    }
 }

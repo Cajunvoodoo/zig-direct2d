@@ -1,3 +1,5 @@
+//! Primitive retangle widget. This widget performs OS-specific functionality
+//! in order to draw a rectangle.
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -20,13 +22,19 @@ const WRect = @This();
 //     r:
 // }
 
-/// The data contained in this widget. We recover this in `handleMsg`.
+/// The OS-specific information for drawing this primitive widget.
 ctx: Ctx = .{},
 /// The rectangle to draw as a rectangle. This may be as big but no bigger than
 /// the parent node's area.
 area: Area,
+/// Whether to draw the rectangle as filled or not.
+style: union(enum) {
+    filled: void,
+    /// Width of edge in pixels.
+    unfilled: f32,
+},
 
-pub const Ctx = switch(builtin.os.tag) {
+const Ctx = switch(builtin.os.tag) {
     .windows => struct {
         brush: ?*win32.ID2D1SolidColorBrush = null,
 
@@ -65,7 +73,12 @@ pub const Ctx = switch(builtin.os.tag) {
                 .right  = @floatFromInt(wRect.area.br.x),
                 .bottom = @floatFromInt(wRect.area.br.y),
             };
-            rt.FillRectangle(&rect, &self.brush.?.ID2D1Brush);
+            // Draw the rectangle according to its style.
+            // We use the default stroke.
+            switch (wRect.style) {
+                .filled => rt.FillRectangle(&rect, &self.brush.?.ID2D1Brush),
+                .unfilled => rt.DrawRectangle(&rect, &self.brush.?.ID2D1Brush, wRect.style.unfilled, null),
+            }
 
             // END DRAW
             const hr = rt.EndDraw(null, null);
