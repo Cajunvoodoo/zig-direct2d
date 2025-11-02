@@ -3,8 +3,8 @@
 
   inputs = {
     zig2nix.url = "github:Cloudef/zig2nix";
-    zls.url = "github:zigtools/zls?ref=0.15.0";
-    # zls.url = "github:zigtools/zls";
+    # zls.url = "github:zigtools/zls?ref=0.15.0";
+    zls.url = "github:zigtools/zls";
     pwndbg-src.url = "github:pwndbg/pwndbg";
   };
 
@@ -16,7 +16,7 @@
       # Check the flake.nix in zig2nix project for more options:
       # <https://github.com/Cloudef/zig2nix/blob/master/flake.nix>
       env = zig2nix.outputs.zig-env.${system} {
-        # zig = zig2nix.outputs.packages.${system}.zig-master;
+        zig = zig2nix.outputs.packages.${system}.zig-master;
       };
     in with builtins; with env.pkgs.lib; rec {
       # Produces clean binaries meant to be ship'd outside of nix
