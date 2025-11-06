@@ -1,0 +1,71 @@
+#+title: Todo
+* TODO Major Features
+** TODO Window & Window Interface
+Contains OS-specific features exposed in an OS-agnostic way.
+*** TODO Invalidate drawing area on ~Resize~
+Allow the Window to be resized, invalidating the area.
+
+Windows: capture ~WM_SIZE~ events.
+
+Read:
+- [[https://stackoverflow.com/questions/49053867/in-direct2d-drawing-dimensions-change-after-window-resizing][Stackoverflow post about changing window dimensions after resizing]]
+*** TODO Limit child's drawing area forcefully
+The child should not be allowed to draw outside of its area.
+
+This is related to re-centering coordinates on the top-left of the parent.
+
+Read:
+- [[https://stackoverflow.com/questions/13297757/limit-drawing-area-on-directx?rq=3
+][Stackoverflow linking to MSDN about clipping areas]]
+** TODO Root widget
+:PROPERTIES:
+:ID:       c80b2315-4b87-498e-ae01-72e72501bb24
+:END:
+
+Required for handling specific message types. The root widget should handle
+certain events and call methods on the ~Window~ to force those events to be
+handled properly.
+
+For example, handles a Click event and forwards it to the first parent it
+collides with, excluding itself.
+*** TODO Click event
+:PROPERTIES:
+:ID:       7e32772e-b8db-4bc6-b61b-5754660a1e2a
+:END:
+
+For the click event, it is important not to waste compute finding who was
+clicked. Therefore, we should:
+
+1. Find the eldest widget (closest to the root) that contains the click.
+2. Find the youngest widget (furthest from the root) that contains the click.
+
+This naturally will form a linked list of all widgets that collide with the
+click.
+
+The eldest widget receives the linked list and pops itself from it. If it
+decides to forward the event, it passes it to the next in line. Eventually,
+the youngest widget will receive the linked list and will handle the event.
+
+** TODO Container widgets
+Prereqs: [[id:c80b2315-4b87-498e-ae01-72e72501bb24][Root Widget]]
+
+Fairly trivial widget that simple acts as an anchor. Because any widget
+can have any number of children, this is effectively the most basic ~WNode~
+possible.
+
+** TODO Draggable widget
+Prereqs: [[id:7e32772e-b8db-4bc6-b61b-5754660a1e2a][Click Events]]
+
+Draggable widgets will have to have a styling at the top of them. Naturally,
+this means the child widget within the Draggable will have a restricted
+drawing area as to not collide with the styling of the drag header.
+
+
+* TODO Minor features
+** TODO Frame time.
+
+* TODO Refactorings
+** TODO Window & Window Interface
+*** TODO Add a VTable
+Clean up the code by moving the public functions to a VTable.
+This includes ~Create~, ~Resize~, etc.
