@@ -26,7 +26,7 @@ const WRect = @This();
 ctx: Ctx = .{},
 /// The rectangle to draw as a rectangle. This may be as big but no bigger than
 /// the parent node's area.
-area: Area,
+rectBounds: Area,
 /// Whether to draw the rectangle as filled or not.
 style: union(enum) {
     filled: void,
@@ -65,13 +65,13 @@ const Ctx = switch(builtin.os.tag) {
             rt.BeginDraw();
 
             // DRAW BODY
-            rt.Clear(&D2D1.ColorFU32(.{.rgb = D2D1.SkyBlue}));
+            // rt.Clear(&D2D1.ColorFU32(.{.rgb = D2D1.SkyBlue}));
             // TODO: abstract the rectangle this shape belongs to out.
             const rect: win32.D2D_RECT_F = .{
-                .left   = @floatFromInt(wRect.area.tl.x),
-                .top    = @floatFromInt(wRect.area.tl.y),
-                .right  = @floatFromInt(wRect.area.br.x),
-                .bottom = @floatFromInt(wRect.area.br.y),
+                .left   = @floatFromInt(wRect.rectBounds.tl.x),
+                .top    = @floatFromInt(wRect.rectBounds.tl.y),
+                .right  = @floatFromInt(wRect.rectBounds.br.x),
+                .bottom = @floatFromInt(wRect.rectBounds.br.y),
             };
             // Draw the rectangle according to its style.
             // We use the default stroke.
@@ -102,7 +102,6 @@ const Ctx = switch(builtin.os.tag) {
 // fn (ui.WidgetManager.Event, *ui.window.Window__struct_30323, ?*anyopaque) error{InitFailed,RepaintFailed,UnknownError}!void',
 pub fn wNode(self: *WRect) WNode {
     return WNode {
-        .drawArea = self.area,
         .ctx = @ptrCast(@alignCast(self)),
         .vtable = &.{
             .handleMsg = handleMsg,
@@ -114,7 +113,7 @@ pub fn wNode(self: *WRect) WNode {
 
 fn handleMsg(node: *WNode, m: Event, window: *Window) WNode.WidgetError!void {
     var self: *WRect = @ptrCast(@alignCast(node.ctx));
-    std.log.debug("WRect ({*}) received event: {}", .{self, m.message});
+    std.log.debug("WRect ({*}) received event from node#{d}: {}", .{self, m.source, m.message});
     switch (m.message) {
         .Init => {
             self.init(window) catch return error.InitFailed;

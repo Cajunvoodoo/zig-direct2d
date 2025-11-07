@@ -5,6 +5,7 @@ const Instant = std.time.Instant;
 
 const msg = @import("message.zig");
 const Window = @import("window.zig").Window;
+const WRoot = @import("WRoot.zig");
 pub const WNode = @import("WNode.zig");
 
 // re-export for ease-of-use.
@@ -42,8 +43,8 @@ evt_writer: Event.Writer,
 /// Contains extra metadata about a `WNode`, such as its freed status.
 /// TODO: Probably also want a mutex or something.
 pub const Node = struct {
-    /// This member is null when the node is free.
-    node: ?WNode,
+    wnode: WNode,
+    free: bool = false,
 };
 
 /// Events are actions that are passed to widgets. They can originate from user
@@ -54,6 +55,9 @@ pub const Event = struct {
     message: msg.Message,
     /// Where this event was fired from. Events from the system are always 0.
     source: WidgetIndex,
+    /// The specific widget this event is intended for. By default, this value is
+    /// null and all widgets are notified.
+    dest: ?WidgetIndex = null,
 
     pub const Writer = struct {
         interface: Io.Writer,
@@ -151,37 +155,55 @@ pub fn init(node_buf: []Node,
     std.debug.assert(evt_buf.len > 0);
     const evt_writer = Event.Writer.init(evt_buf);
 
-    return WidgetManager {
+    const wm = WidgetManager {
         .evt_writer = evt_writer,
         .global_nodes = node_buf,
-        .next_free = 0,
+        .next_free = 1,
     };
+
+    // Create the root widget.
+    wm.global_nodes[0] = .{ .wnode = WRoot.wNode() };
+
+    return wm;
 }
 
 // FIXME: handle children and change this to account for the parent of this node.
-pub fn addWNode(self: *WidgetManager, wNode: WNode) WidgetIndex {
+pub fn addWNode(self: *WidgetManager, parentIndx: ?WidgetIndex, wNode: WNode) WidgetIndex {
     std.debug.assert(self.next_free < self.global_nodes.len); // sanity check
-    std.debug.assert(self.global_nodes[self.next_free].node == null);
-    std.log.debug("Adding new node with indx {d}: {}", .{self.next_free, wNode});
+    std.debug.assert(self.global_nodes[self.next_free].free);
+    std.log.debug("Adding new node with indx {d}", .{self.next_free});
 
-    self.global_nodes[self.next_free] = .{.node = wNode};
-    // TODO: BUG: Calculate the next free index correctly.
+    self.global_nodes[self.next_free] = .{.wnode = wNode};
     defer self.next_free += 1;
+    var wNodePtr = &self.global_nodes[self.next_free].wnode;
+
+    var parent: *Node = &self.global_nodes[@intFromEnum(parentIndx orelse .root)];
+    std.debug.assert(!parent.free); // Sanity check.
+    // TODO: use a method instead of directly grabbing parent's drawArea.
+    wNodePtr.drawArea = parent.wnode.drawArea;
+    wNodePtr.parentIndx = parentIndx orelse .root;
+    // Be careful that we don't point to anything excecpt the global_nodes.
+    parent.wnode.children.append(&wNodePtr.siblings);
+    // TODO: Somehow ensure the parent knows to capture new events, maybe. Perhaps this should be in the vtable.
+
+    // TODO: BUG: Calculate the next free index correctly.
     return @enumFromInt(self.next_free);
 }
 
 /// Remove a Widget. If the widget didn't exist, then this operation is a no-op.
 /// The index must be within bounds of the widget array.
 pub fn removeWNode(self: *WidgetManager, indx: WidgetIndex) void {
+    // TODO: FIXME: mark children as free as well.
     std.log.debug("Removing node@{d}", .{indx});
     std.debug.assert(indx < self.global_nodes.len);
 
     // REVIEW: should next_free be a WidgetIndex, or a usize?
-    self.global_nodes[indx].node = null;
+    self.global_nodes[indx].wnode = null;
     self.next_free = indx;
 }
 
 /// Immediately realize an event onto the global nodes/widgets.
+/// If the event destination is non-null, only the specific widget will notified.
 pub fn dispatchEvt(self: *WidgetManager, evt: Event) WNode.WidgetError!void {
     std.log.debug("{s} START DISPATCH {s}", .{"=+" ** 4, "=+" ** 4});
     defer std.log.debug("{s} END DISPATCH {s}\n", .{"=+" ** 4, "=+" ** 4});
@@ -189,35 +211,45 @@ pub fn dispatchEvt(self: *WidgetManager, evt: Event) WNode.WidgetError!void {
     startFrameTime(&_t);
     defer endFrameTime(_t);
 
-    std.log.debug("Dispatch: Event received from node#{d}: {}", .{@intFromEnum(evt.source), evt.message});
+    std.log.debug("Dispatch: Broadcast Event received from node#{d}: {}", .{@intFromEnum(evt.source), evt.message});
     const window: *Window = @fieldParentPtr("widgetManager", self);
-    // std.log.debug("Dispatch: Found parent window {}", .{window});
     std.debug.assert(self.global_nodes.ptr == window.widgetManager.global_nodes.ptr);
+    std.debug.assert(!self.global_nodes[0].free);
 
-    // TODO REMOVE THIS CODE
-    if (evt.message == .Resize) {
-        window.resize(evt.message.Resize);
+    // Bounds checking
+    // All broadcast events are forwarded to the root widget, regardless of its
+    // subscriptions.
+    const destIndx = @intFromEnum(evt.dest orelse .root);
+    std.debug.assert(!self.global_nodes[destIndx].free);
+    if (destIndx >= self.global_nodes.len) return error.WidgetIndexOutOfBounds;
+    if (self.global_nodes[destIndx].free) return error.NoWidgetAtIndex;
+
+    var destNode = self.global_nodes[destIndx].wnode;
+    if (!evt.message.subscribedBy(destNode.subscriptions)) {
+        std.log.err("Forwarding message '{}' to node#{d}, but node is not subscribed to these messages.\nSubscriptions:{any}\n", .{evt.message, destIndx, destNode.subscriptions});
+        return error.NoSubscription;
     }
 
-    // REVIEW: this seems like garbage.
-    for (self.global_nodes, 0..) |*mb_node, idx| {
-        _ = idx;
-        if (mb_node.node) |*node| {
-            // std.log.debug("dispatching to node#{d}", .{idx});
-            try node.handleMsg(evt, window);
-        }
-    }
+    try destNode.handleMsg(evt, window);
+
+    // REVIEW: this seems like garbage. Remove this code.
+    // for (self.global_nodes) |*node| {
+    //     if (node.free) continue;
+
+    //     // std.log.debug("dispatching to node#{d}", .{idx});
+    //     try node.wnode.handleMsg(evt, window);
+    // }
 }
 
 
 inline fn startFrameTime(time: *Instant) void {
-    if (builtin.mode == .Debug or true) {
+    if (builtin.mode == .Debug) {
         time.* = Instant.now() catch unreachable;
     }
 }
 
 inline fn endFrameTime(startTime: Instant) void {
-    if (builtin.mode == .Debug or true) {
+    if (builtin.mode == .Debug) {
         const endTime = Instant.now() catch unreachable;
         const dur = endTime.since(startTime);
         std.log.debug("FRAMETIME: Event dispatch took {D}", .{dur});

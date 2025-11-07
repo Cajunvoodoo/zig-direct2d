@@ -1,4 +1,5 @@
 //! Messages are sent to `WNode`s in order to coerce them to do something.
+const builtin = @import("builtin");
 const std = @import("std");
 const area = @import("area.zig");
 
@@ -40,7 +41,66 @@ pub const SystemMessage = union(enum) {
     //         .Init, .Deinit, .Resize => null,
     //     };
     // }
+
+    pub fn subscribedBy(self: SystemMessage, subs: MsgSubscriptions) bool {
+        return switch (self) {
+            .Deinit => subs.Deinit,
+            .Repaint => subs.Repaint,
+            .Resize => subs.Resize,
+            .Init => subs.Init,
+        };
+    }
 };
+
+/// Bitfield-like struct that contains each type of message.
+pub const MsgSubscriptions = blk: {
+    const messages = @typeInfo(SystemMessage).@"union".fields;
+
+    // For better debugging, use a normal struct. Otherwise, keep it packed.
+    // TODO: profile MsgSubscription packed vs auto.
+    const alignment, const layout = blk2: {
+        if (builtin.mode == .Debug) break :blk2 .{1, .auto};
+        break :blk2 .{0, .@"packed"};
+    };
+
+    var fields: [messages.len]std.builtin.Type.StructField = undefined;
+    for (messages, 0..) |message, idx| {
+        fields[idx] = std.builtin.Type.StructField {
+            .type = bool,
+            .name = message.name,
+            .is_comptime = false,
+            .default_value_ptr = &false,
+            .alignment = alignment,
+        };
+    }
+    break :blk @Type(.{ .@"struct" = .{
+        .layout = layout,
+        .is_tuple = false,
+        .fields = &fields,
+        .decls = &.{},
+    }});
+};
+
+/// Default subscription set.
+pub const AllMessages: MsgSubscriptions = blk: {
+    var subscriptions: MsgSubscriptions = .{};
+    const fields = @typeInfo(MsgSubscriptions).@"struct".fields;
+
+    for (fields) |field| {
+        @field(subscriptions, field.name) = true;
+    }
+
+    break :blk subscriptions;
+};
+
+/// Return a new `MsgSubscriptions` combining both structs.
+pub fn mergeSubscriptions(lSubs: MsgSubscriptions, rSubs: MsgSubscriptions) MsgSubscriptions {
+    var subscriptions: MsgSubscriptions = .{};
+    inline for (std.meta.fieldNames(MsgSubscriptions)) |name| {
+        @field(subscriptions, name) = @field(lSubs, name) or @field(rSubs, name);
+    }
+    return subscriptions;
+}
 
 // fn MergedUnions(comptime L: type, comptime R: type) type {
 //     const l_fields = @typeInfo(L).Union.fields;

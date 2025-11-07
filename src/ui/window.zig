@@ -23,6 +23,7 @@ pub const Window = switch(native_os) {
         pFactory: ?*win32.ID2D1Factory               = null,
         pRenderTarget: ?*win32.ID2D1HwndRenderTarget = null,
         pWriteFactory: ?*win32.IDWriteFactory        = null,
+        paintStruct: win32.PAINTSTRUCT = undefined, // For BeginPaint and EndPaint
 
         const win32 = @import("win32").everything;
         const windowlongptr = @import("win32").windowlongptr;
@@ -135,6 +136,31 @@ pub const Window = switch(native_os) {
               _ = renderTarget.Resize(&size);
               _ = win32.InvalidateRect(self.hwnd.?, null, win32.FALSE);
           }
+        }
+
+        /// Clear the window. Chiefly used by the root widget (that means
+        /// don't touch!). You shouldn't need to use this.
+        /// TODO: clear should accept some form of color for the background, and
+        ///       the root widget should be able to hold this color.
+        pub fn clear(self: *Window) void {
+            const rt = &self.pRenderTarget.?.ID2D1RenderTarget;
+            rt.Clear(&D2D1.ColorFU32(.{.rgb = D2D1.SkyBlue}));
+        }
+
+        /// Begin painting. This may be a no-op on some systems, however it is
+        /// required that this be called before painting, otherwise an error is
+        /// raised (if violation is detected).
+        pub fn beginPaint(self: *Window) void {
+            // TODO: tell root widget to track if painting has begun, may need
+            //       field shared among all window implementations
+            std.debug.assert(self.hwnd != null);
+            _ = win32.BeginPaint(self.hwnd.?, &self.paintStruct);
+        }
+
+        pub fn endPaint(self: *Window) void {
+            std.debug.assert(self.hwnd != null);
+            _ = win32.EndPaint(self.hwnd.?, &self.paintStruct);
+            // TODO: check return values from BeginPaint and EndPaint
         }
 
         pub fn create(self: *Window, windowName: [*:0]const u8, options: Options) Error!void {

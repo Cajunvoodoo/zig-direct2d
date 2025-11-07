@@ -4,9 +4,12 @@ const std = @import("std");
 
 const Area = @import("area.zig").Area;
 const WidgetManager = @import("WidgetManager.zig").WidgetManager;
-const WidgetIndex = WidgetManager.WidgetIndex;
+pub const WidgetIndex = WidgetManager.WidgetIndex;
 const Event = WidgetManager.Event;
 const Window = @import("window.zig").Window;
+const messageMod = @import("message.zig");
+const MsgSubscriptions = messageMod.MsgSubscriptions;
+const AllMessages = messageMod.AllMessages;
 
 pub const WNode = @This();
 
@@ -19,7 +22,7 @@ vtable: *const VTable,
 
 /// The rectangle this widget is contained within. This is relative to its parent.
 /// Nothing may be drawn outside of this area.
-drawArea: Area,
+drawArea: Area = undefined,
 
 /// This value is null when it is the root of the widget tree or when a `WNode`
 /// is partially initialized (e.g. before it gets added to the tree).
@@ -32,6 +35,8 @@ siblings: std.DoublyLinkedList.Node = .{},
 
 /// Hold's this `WNode`'s children.
 children: std.DoublyLinkedList = .{},
+
+subscriptions: MsgSubscriptions = AllMessages,
 
 pub const VTable = struct {
 
@@ -59,6 +64,13 @@ pub const WidgetError = error {
     UnknownError,
     /// Widget initialization failed.
     InitFailed,
+    /// An index into the global nodes failed because the specific widget is
+    /// marked as free.
+    NoWidgetAtIndex,
+    WidgetIndexOutOfBounds,
+    /// The widget specified should not receive a provided message because it is
+    /// not subscribed to message of that kind.
+    NoSubscription,
 };
 
 pub fn handleMsg(wNode: *WNode, m: Event, window: *Window) WidgetError!void {
