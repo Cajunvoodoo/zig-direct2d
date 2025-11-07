@@ -2,7 +2,7 @@
 * TODO Major Features
 ** TODO Window & Window Interface
 Contains OS-specific features exposed in an OS-agnostic way.
-*** TODO Invalidate drawing area on ~Resize~
+*** DONE Invalidate drawing area on ~Resize~
 Allow the Window to be resized, invalidating the area.
 
 Windows: capture ~WM_SIZE~ events.
@@ -14,9 +14,19 @@ The child should not be allowed to draw outside of its area.
 
 This is related to re-centering coordinates on the top-left of the parent.
 
+This can be forced on all widgets by inserting a function in
+its VTable. Basically, before we call its HandleMessage, we
+restrict the area. The function we put in should be in ~Window~.
+i.e.,
+#+begin_src zig
+node.vtable.handleMsg = window.RestrictDrawArea(node.vtable.handleMsg)
+#+end_src
+
 Read:
 - [[https://stackoverflow.com/questions/13297757/limit-drawing-area-on-directx?rq=3
 ][Stackoverflow linking to MSDN about clipping areas]]
+*** TODO When assigning ~WNode.drawArea~ in ~addWNode~, use a method on ~WNode~ instead.
+*** TODO When adding a new ~WNode~, the parent should be notified that a new child has been added (to update its subscriptions)
 ** TODO Root widget
 :PROPERTIES:
 :ID:       c80b2315-4b87-498e-ae01-72e72501bb24
