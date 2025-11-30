@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.15.0",
     .dependencies = .{
         .zigwin32 = .{
-            .url = "git+https://github.com/marlersoft/zigwin32#5587b16fa040573846a6bf531301f6206d31a6bf",
-            .hash = "zigwin32-25.0.28-preview-AAAAAICM5AMResOGQnQ85mfe60TTOQeMtt7GRATUOKoP",
+            .url = "git+https://github.com/Cajunvoodoo/zigwin32#7f2ec0cfff20d6643216a3bd5314b38b89596077",
+            .hash = "zigwin32-25.0.28-preview-4VbVceiL5AM__6mruPw83hLy7xGmxpPpwiJOOs2CYKg-",
         },
     },
     .paths = .{

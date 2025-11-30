@@ -1,8 +1,8 @@
 {
-  "zigwin32-25.0.28-preview-AAAAAICM5AMResOGQnQ85mfe60TTOQeMtt7GRATUOKoP": {
+  "zigwin32-25.0.28-preview-4VbVceiL5AM__6mruPw83hLy7xGmxpPpwiJOOs2CYKg-": {
     "name": "zigwin32",
-    "url": "git+https://github.com/marlersoft/zigwin32#5587b16fa040573846a6bf531301f6206d31a6bf",
-    "hash": "sha256-GIH6aO8yEWKKvIr4syG6aYViXi2whIg4feWox7f9ZSM=",
-    "rev": "5587b16fa040573846a6bf531301f6206d31a6bf"
+    "url": "git+https://github.com/Cajunvoodoo/zigwin32#7f2ec0cfff20d6643216a3bd5314b38b89596077",
+    "hash": "sha256-vUiXgUbbbdcw1TSCGTDKlT2Wn7CrAuh79KG4vyqThTE=",
+    "rev": "7f2ec0cfff20d6643216a3bd5314b38b89596077"
   }
 }
