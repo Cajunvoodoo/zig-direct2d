@@ -141,7 +141,7 @@ pub const Event = struct {
             _ = bytesWritten;
             // std.log.debug("Wrote {d} bytes to buffer: {any}", .{bytesWritten, bytes});
         }
-    };
+    }; // Event.Writer
 };
 
 pub const Error = error {
@@ -230,15 +230,7 @@ pub fn dispatchEvt(self: *WidgetManager, evt: Event) WNode.WidgetError!void {
         return error.NoSubscription;
     }
 
-    try destNode.handleMsg(evt, window);
-
-    // REVIEW: this seems like garbage. Remove this code.
-    // for (self.global_nodes) |*node| {
-    //     if (node.free) continue;
-
-    //     // std.log.debug("dispatching to node#{d}", .{idx});
-    //     try node.wnode.handleMsg(evt, window);
-    // }
+    try destNode.handleMsg(evt, window); // Root node.
 }
 
 

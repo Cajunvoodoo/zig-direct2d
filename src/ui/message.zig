@@ -2,6 +2,7 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const area = @import("area.zig");
+const WidgetIndex = @import("WidgetManager.zig").WidgetIndex;
 
 pub const Message = SystemMessage;
 const message_tag = u16;
@@ -23,6 +24,8 @@ pub const SystemMessage = union(enum) {
     Repaint: void,
     /// The window has been resized to a new `Area`.
     Resize: area.Bounded,
+    /// A Child was added to this node with the corresponding index.
+    ChildAdded: WidgetIndex,
     Init: void,
 
     // /// Convenience function to easily convert to a `SomeMessage`, effectively
@@ -44,10 +47,7 @@ pub const SystemMessage = union(enum) {
 
     pub fn subscribedBy(self: SystemMessage, subs: MsgSubscriptions) bool {
         return switch (self) {
-            .Deinit => subs.Deinit,
-            .Repaint => subs.Repaint,
-            .Resize => subs.Resize,
-            .Init => subs.Init,
+            inline else => |_, tag| @field(subs, @tagName(tag))
         };
     }
 };
