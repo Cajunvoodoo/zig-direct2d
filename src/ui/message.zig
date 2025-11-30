@@ -46,22 +46,25 @@ pub const MsgSubscriptions = blk: {
         break :blk2 .{0, .@"packed"};
     };
 
-    var fields: [messages.len]std.builtin.Type.StructField = undefined;
+    var field_names: [messages.len][]const u8 = undefined;
+    var field_types: [messages.len]type = undefined;
+    var field_attrs: [messages.len]std.builtin.Type.StructField.Attributes = undefined;
     for (messages, 0..) |message, idx| {
-        fields[idx] = std.builtin.Type.StructField {
-            .type = bool,
-            .name = message.name,
-            .is_comptime = false,
+        field_names[idx] = message.name;
+        field_types[idx] = bool;
+        field_attrs[idx] = .{
+            .@"comptime" = false,
+            .@"align" = alignment,
             .default_value_ptr = &false,
-            .alignment = alignment,
         };
     }
-    break :blk @Type(.{ .@"struct" = .{
-        .layout = layout,
-        .is_tuple = false,
-        .fields = &fields,
-        .decls = &.{},
-    }});
+    break :blk @Struct(
+        layout,
+        null,
+        &field_names,
+        &field_types,
+        &field_attrs,
+    );
 };
 
 /// Default subscription set.
