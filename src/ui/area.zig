@@ -36,9 +36,17 @@ pub const Area = struct {
 
     /// Determines if this area entirely encompasses the other.
     pub fn contains(self: Area, other: Area) bool {
+        // Do not use containsPos, as that introduces twice the number of cmps.
         return self.tl.x <= other.tl.x and
                self.tl.y <= other.tl.y and
                self.br.x >= other.br.x and
                self.br.y >= other.br.y;
+    }
+
+    pub fn containsPos(self: Area, pos: Pos) bool {
+        return self.tl.x <= pos.x and
+               self.tl.y <= pos.y and
+               self.br.x >= pos.x and
+               self.br.y >= pos.y;
     }
 };

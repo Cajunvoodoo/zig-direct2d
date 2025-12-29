@@ -2,6 +2,7 @@ const builtin = @import("builtin");
 const std = @import("std");
 const Io = std.Io;
 const Instant = std.time.Instant;
+const Tuple = std.meta.Tuple;
 
 const msg = @import("message.zig");
 const Window = @import("window.zig").Window;
@@ -168,7 +169,8 @@ pub fn init(node_buf: []Node,
 }
 
 // FIXME: handle children and change this to account for the parent of this node.
-pub fn addWNode(self: *WidgetManager, parentIndx: ?WidgetIndex, wNode: WNode) WidgetIndex {
+//        Currently, the bookkeeping isn't done properly(?).
+pub fn addWNode(self: *WidgetManager, parentIndx: ?WidgetIndex, wNode: WNode) Tuple(&.{WidgetIndex, *WNode}) {
     std.debug.assert(self.next_free < self.global_nodes.len); // sanity check
     std.debug.assert(self.global_nodes[self.next_free].free);
     std.log.debug("Adding new node with indx {d}", .{self.next_free});
@@ -179,15 +181,15 @@ pub fn addWNode(self: *WidgetManager, parentIndx: ?WidgetIndex, wNode: WNode) Wi
 
     var parent: *Node = &self.global_nodes[@intFromEnum(parentIndx orelse .root)];
     std.debug.assert(!parent.free); // Sanity check.
-    // TODO: use a method instead of directly grabbing parent's drawArea.
-    wNodePtr.drawArea = parent.wnode.drawArea;
+    // // TODO: use a method instead of directly grabbing parent's drawArea.
+    // wNodePtr.drawArea = parent.wnode.drawArea;
     wNodePtr.parentIndx = parentIndx orelse .root;
     // Be careful that we don't point to anything excecpt the global_nodes.
     parent.wnode.children.append(&wNodePtr.siblings);
     // TODO: Somehow ensure the parent knows to capture new events, maybe. Perhaps this should be in the vtable.
 
     // TODO: BUG: Calculate the next free index correctly.
-    return @enumFromInt(self.next_free);
+    return .{@enumFromInt(self.next_free), &self.global_nodes[self.next_free].wnode};
 }
 
 /// Remove a Widget. If the widget didn't exist, then this operation is a no-op.
@@ -230,7 +232,7 @@ pub fn dispatchEvt(self: *WidgetManager, evt: Event) WNode.WidgetError!void {
         return error.NoSubscription;
     }
 
-    try destNode.handleMsg(evt, window); // Root node.
+    _ = try destNode.handleMsg(evt, window); // Root node.
 }
 
 

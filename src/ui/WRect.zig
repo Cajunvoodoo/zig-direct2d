@@ -108,10 +108,11 @@ pub fn wNode(self: *WRect) WNode {
             .release = noop,
             // .repaint = repaint,
         },
+        .drawArea = self.rectBounds,
     };
 }
 
-fn handleMsg(node: *WNode, m: Event, window: *Window) WNode.WidgetError!void {
+fn handleMsg(node: *WNode, m: Event, window: *Window) WNode.WidgetError!bool {
     var self: *WRect = @ptrCast(@alignCast(node.ctx));
     std.log.debug("WRect ({*}) received event from node#{d}: {}", .{self, m.source, m.message});
     switch (m.message) {
@@ -124,8 +125,9 @@ fn handleMsg(node: *WNode, m: Event, window: *Window) WNode.WidgetError!void {
         .Repaint => {
             self.paint(window) catch return error.RepaintFailed;
         },
-        else => {},
+        else => return true,
     }
+    return false;
 }
 
 fn init(self: *WRect, window: *Window) !void {

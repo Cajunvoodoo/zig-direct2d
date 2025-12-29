@@ -2,7 +2,10 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const area = @import("area.zig");
-const WidgetIndex = @import("WidgetManager.zig").WidgetIndex;
+const wm = @import("WidgetManager.zig");
+// const WidgetIndex = @import("WidgetManager.zig").WidgetIndex;
+const WNode = @import("WNode.zig");
+const Window = @import("window.zig").Window;
 
 pub const Message = SystemMessage;
 const message_tag = u16;
@@ -25,7 +28,12 @@ pub const SystemMessage = union(enum) {
     /// The window has been resized to a new `Area`.
     Resize: area.Bounded,
     /// A Child was added to this node with the corresponding index.
-    ChildAdded: WidgetIndex,
+    ChildAdded: wm.WidgetIndex,
+    /// The left mouse button has been pressed in the corresponding absolute
+    /// position. The position is relative to the client area (i.e., top-left).
+    /// It should be translated to a relative position to the widget it is passed
+    /// to before being interpreted directly.
+    Mouse1DownAbs: area.Pos,
     Init: void,
 
     pub fn subscribedBy(self: SystemMessage, subs: MsgSubscriptions) bool {
@@ -34,6 +42,62 @@ pub const SystemMessage = union(enum) {
         };
     }
 };
+
+/// Callbacks used to define behaviors for widgets.
+pub const MsgCallbacks = blk: {
+    const messages = @typeInfo(SystemMessage).@"union".fields;
+
+    var field_names: [messages.len][]const u8 = undefined;
+    var field_types: [messages.len]type = undefined;
+    var field_attrs: [messages.len]std.builtin.Type.StructField.Attributes = undefined;
+    for (messages, 0..) |message, idx| {
+        const ccMsgName = ccStr(message.name);
+        field_names[idx] = "on" ++ ccMsgName;
+        field_types[idx] = ?*const fn(wNode: *WNode, msg: Message, src: wm.WidgetIndex, window: *Window) wm.WNode.WidgetError!void;
+        field_attrs[idx] = .{
+            .@"comptime" = false,
+            .@"align" = null,
+            .default_value_ptr = null,
+        };
+    }
+
+    break :blk @Struct(
+        .auto,
+        null,
+        &field_names,
+        &field_types,
+        &field_attrs,
+    );
+};
+
+pub const emptyCallbacks: MsgCallbacks = blk: {
+    const cbs = @typeInfo(MsgCallbacks).@"struct".fields;
+    var msgCallbacks: MsgCallbacks = undefined;
+
+    for (cbs) |cbField| {
+        @field(msgCallbacks, cbField.name) = null;
+    }
+    break :blk msgCallbacks;
+};
+
+pub fn invokeMsgCb(cbs: *const MsgCallbacks, wNode: *WNode, msg: Message, src: wm.WidgetIndex, window: *Window) wm.WNode.WidgetError!void {
+    switch (msg) {
+        inline else => |_, tag| {
+            const cbName = comptime "on" ++ ccStr(@tagName(tag));
+            if (@field(cbs, cbName)) |cb| {
+                return cb(wNode, msg, src, window);
+            }
+        },
+    }
+}
+
+// Camel-case the first letter of a comptime string.
+fn ccStr(comptime str: []const u8) []const u8 {
+    var cc_str: [str.len]u8 = undefined;
+    @memcpy(&cc_str, str);
+    cc_str[0] = std.ascii.toUpper(cc_str[0]);
+    return cc_str[0..];
+}
 
 /// Bitfield-like struct that contains each type of message.
 pub const MsgSubscriptions = blk: {

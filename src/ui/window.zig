@@ -54,6 +54,8 @@ pub const Window = switch(native_os) {
             const message: ?msg.Message = switch (uMsg) {
                 win32.WM_CREATE  => blk: {
                     self.InitResources() catch return -1; // Fail CreateWindowEx.
+                    const hCursor = win32.LoadCursorW(null, win32.IDC_HAND);
+                    _ = win32.SetCursor(hCursor);
                     break :blk msg.Message.Init;
                 },
                 win32.WM_DESTROY => blk: {
@@ -61,7 +63,7 @@ pub const Window = switch(native_os) {
                     break :blk msg.Message.Deinit;
                 },
                 win32.WM_PAINT   => msg.Message.Repaint,
-                win32.WM_SIZE  => blk: {
+                win32.WM_SIZE    => blk: {
                     // This message happens after the resizing action is complete (see WM_SIZING for constant updates).
                     const width: u16 = @bitCast(win32.xFromLparam(lParam));
                     const height: u16 = @bitCast(win32.yFromLparam(lParam));
@@ -70,6 +72,12 @@ pub const Window = switch(native_os) {
                         .height = height,
                     };
                     break :blk msg.Message {.Resize = bounds};
+                },
+                win32.WM_LBUTTONDOWN => blk: {
+                    const x: u16 = @bitCast(win32.xFromLparam(lParam));
+                    const y: u16 = @bitCast(win32.yFromLparam(lParam));
+                    const pos = area.Pos { .x = x, .y = y, };
+                    break :blk msg.Message { .Mouse1DownAbs = pos };
                 },
                 else => null,
             };
