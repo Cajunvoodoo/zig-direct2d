@@ -6,9 +6,7 @@ const builtin = @import("builtin");
 const WNode = @import("WNode.zig");
 const Area = @import("area.zig").Area;
 const msg = @import("message.zig");
-const SafeRelease = @import("window.zig").Windows.SafeRelease;
 const Window = @import("window.zig").Window;
-const D2D1 = @import("window.zig").D2D1;
 const Event = @import("WidgetManager.zig").Event;
 
 const WRect = @This();
@@ -21,28 +19,28 @@ const WRect = @This();
 // const Color = struct {
 //     r:
 // }
+pub const Style = union(enum) {
+    filled: void,
+    unfilled: f32,
+};
 
 /// The OS-specific information for drawing this primitive widget.
-ctx: Ctx = .{},
-/// The rectangle to draw as a rectangle. This may be as big but no bigger than
-/// the parent node's area.
-rectBounds: Area,
-/// Whether to draw the rectangle as filled or not.
-style: union(enum) {
-    filled: void,
-    /// Width of edge in pixels.
-    unfilled: f32,
-},
+os_ctx: OsCtx = .{},
+/// Whether to draw the rectangle as filled or not. Defined in call to `toWNode()`.
+style: Style = undefined,
 
-const Ctx = switch(builtin.os.tag) {
+/// OS-specific context. An instantiation of this struct is stored in `WRect` itself.
+const OsCtx = switch(builtin.os.tag) {
     .windows => struct {
+        const SafeRelease = @import("winnt/WindowNT.zig").SafeRelease;
+        const D2D1 = @import("winnt/D2D1.zig");
         brush: ?*win32.ID2D1SolidColorBrush = null,
 
         const win32 = @import("win32").everything;
 
         // Below functions are present on all platforms.
 
-        pub fn init(self: *Ctx, window: *Window) !void {
+        pub fn init(self: *OsCtx, window: *Window) !void {
             const color = D2D1.ColorF(.{ .r = 1, .g = 1, .b = 0 });
             // TODO: use color abstraction here to allow for customization
             var brush: *win32.ID2D1SolidColorBrush = undefined;
@@ -53,11 +51,11 @@ const Ctx = switch(builtin.os.tag) {
             } else return error.CtxInitFailed;
         }
 
-        pub fn deinit(self: *Ctx) void {
+        pub fn deinit(self: *OsCtx) void {
             SafeRelease(&self.brush);
         }
 
-        pub fn paint(self: *Ctx, wRect: *WRect, window: *Window) !void {
+        pub fn paint(self: *OsCtx, wRect: *WRect, wNode: *WNode, window: *Window) !void {
             const rt = &window.pRenderTarget.?.ID2D1RenderTarget;
             // START DRAW
             var ps: win32.PAINTSTRUCT = undefined;
@@ -68,10 +66,10 @@ const Ctx = switch(builtin.os.tag) {
             // rt.Clear(&D2D1.ColorFU32(.{.rgb = D2D1.SkyBlue}));
             // TODO: abstract the rectangle this shape belongs to out.
             const rect: win32.D2D_RECT_F = .{
-                .left   = @floatFromInt(wRect.rectBounds.tl.x),
-                .top    = @floatFromInt(wRect.rectBounds.tl.y),
-                .right  = @floatFromInt(wRect.rectBounds.br.x),
-                .bottom = @floatFromInt(wRect.rectBounds.br.y),
+                .left   = @floatFromInt(wNode.drawArea.tl.x),
+                .top    = @floatFromInt(wNode.drawArea.tl.y),
+                .right  = @floatFromInt(wNode.drawArea.br.x),
+                .bottom = @floatFromInt(wNode.drawArea.br.y),
             };
             // Draw the rectangle according to its style.
             // We use the default stroke.
@@ -95,12 +93,17 @@ const Ctx = switch(builtin.os.tag) {
     else => |platform| @compileError("WRect not yet supported for platform '" ++ @tagName(platform) ++ "'"),
 };
 
+pub const Options = struct {
+    rectBounds: Area,
+    style: Style,
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 //                               IMPLEMENTATION                              //
 ///////////////////////////////////////////////////////////////////////////////
 
-// fn (ui.WidgetManager.Event, *ui.window.Window__struct_30323, ?*anyopaque) error{InitFailed,RepaintFailed,UnknownError}!void',
-pub fn wNode(self: *WRect) WNode {
+pub fn toWNode(self: *WRect, options: Options) WNode {
+    self.style = options.style;
     return WNode {
         .ctx = @ptrCast(@alignCast(self)),
         .vtable = &.{
@@ -108,7 +111,7 @@ pub fn wNode(self: *WRect) WNode {
             .release = noop,
             // .repaint = repaint,
         },
-        .drawArea = self.rectBounds,
+        .drawArea = options.rectBounds,
     };
 }
 
@@ -123,7 +126,7 @@ fn handleMsg(node: *WNode, m: Event, window: *Window) WNode.WidgetError!bool {
             self.deinit();
         },
         .Repaint => {
-            self.paint(window) catch return error.RepaintFailed;
+            self.paint(node, window) catch return error.RepaintFailed;
         },
         else => return true,
     }
@@ -131,15 +134,15 @@ fn handleMsg(node: *WNode, m: Event, window: *Window) WNode.WidgetError!bool {
 }
 
 fn init(self: *WRect, window: *Window) !void {
-    return self.ctx.init(window);
+    return self.os_ctx.init(window);
 }
 
 fn deinit(self: *WRect) void {
-    return self.ctx.deinit();
+    return self.os_ctx.deinit();
 }
 
-fn paint(self: *WRect, window: *Window) !void {
-    return self.ctx.paint(self, window);
+fn paint(self: *WRect, node: *WNode, window: *Window) !void {
+    return self.os_ctx.paint(self, node, window);
 }
 
 // fn repaint() WNode.WidgetError!void {

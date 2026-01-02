@@ -25,26 +25,27 @@ pub fn main() !void {
     const _wm = WidgetManager.init(node_buf, evt_buf);
     var window = windowMod.init(_wm);
 
-    const wRect: WRect = .{
-        .style = .{.unfilled = 10},
+    const wRect: WRect = .{};
+    var wRectOptions = WRect.Options {
         .rectBounds = .{
             .tl = .{.x = 100, .y = 100},
             .br = .{.x = 300, .y = 300},
-        }
+        },
+        .style = .{.unfilled = 10},
     };
     var wRect1 = wRect;
     var hr: WNode.WidgetIndex = undefined;
 
-    hr, const wRect1Node = window.widgetManager.addWNode(null, wRect1.wNode());
+    hr, const wRect1Node = window.widgetManager.addWNode(null, wRect1.toWNode(wRectOptions));
     std.debug.assert(@intFromEnum(hr) == 1);
     wRect1Node.msgCallbacks.onMouse1DownAbs = debugClickCb("wRect1Node");
     std.debug.assert(wRect1Node.msgCallbacks.onMouse1DownAbs == _wm.global_nodes[@intFromEnum(hr)].wnode.msgCallbacks.onMouse1DownAbs);
 
     var wRect2: WRect = wRect;
-    wRect2.rectBounds.tl = .{.x = 50, .y = 50};
-    wRect2.rectBounds.br = .{.x = 100, .y = 100};
-    wRect2.style = .filled;
-    hr, const wRect2Node = window.widgetManager.addWNode(null, wRect2.wNode());
+    wRectOptions.rectBounds.tl = .{.x = 50, .y = 50};
+    wRectOptions.rectBounds.br = .{.x = 100, .y = 100};
+    wRectOptions.style = .filled;
+    hr, const wRect2Node = window.widgetManager.addWNode(null, wRect2.toWNode(wRectOptions));
     std.debug.assert(@intFromEnum(hr) == 2);
     wRect2Node.msgCallbacks.onMouse1DownAbs = debugClickCb("wRect2Node");
 
