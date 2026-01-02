@@ -107,7 +107,7 @@ pub const MsgSubscriptions = blk: {
     // TODO: profile MsgSubscription packed vs auto.
     const alignment, const layout = blk2: {
         if (builtin.mode == .Debug) break :blk2 .{1, .auto};
-        break :blk2 .{0, .@"packed"};
+        break :blk2 .{null, .@"packed"};
     };
 
     var field_names: [messages.len][]const u8 = undefined;
