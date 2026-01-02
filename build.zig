@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) void {
         }
     });
     const optimize = b.standardOptimizeOption(.{});
+    const no_bin = b.option(bool, "no-bin", "Disable emitting a binary.") orelse false;
 
     const zigwin32_dep = b.dependency("zigwin32", .{});
     const zigwin32 = zigwin32_dep.module("win32");
@@ -25,7 +26,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    b.installArtifact(exe);
+    if (!no_bin) {
+        b.installArtifact(exe);
+    } else {
+        b.getInstallStep().dependOn(&exe.step);
+    }
 
     const emit_docs = b.option(bool, "emit-docs", "Whether to install docs in the build step");
     if (emit_docs) |_| {
